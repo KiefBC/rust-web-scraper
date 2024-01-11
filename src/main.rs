@@ -53,9 +53,6 @@ async fn main() {
     let user_element = get_input();
 
     println!("We have parsed the HTML. Now we are selecting the elements...");
-    // let book_title_selector = Selector::parse("h3 > a").unwrap();
-    // let book_price_selector = Selector::parse(".price_color").unwrap();
-
     let book_title_selector = Selector::parse(&user_selector).unwrap();
     let book_price_selector = Selector::parse(&user_element).unwrap();
 
@@ -64,15 +61,6 @@ async fn main() {
     let mut file = create_file(&user_file_name);
 
     println!("We have selected the elements. Now we are writing the output to a file...");
-    // let file = File::create("output.txt").expect("Unable to create file");
-    // let mut file = BufWriter::new(file);
-
-
-    // scrape_and_write_to_file(&document, &book_title_selector, &mut file)
-    //     .expect("Unable to write book titles");
-    // scrape_and_write_to_file(&document, &book_price_selector, &mut file)
-    //     .expect("Unable to write book prices");
-
     let mut file = create_file(&user_file_name).expect("Failed to create file");
     scrape_and_write_to_file(&document, &book_title_selector, &mut file)
         .expect("Unable to write book titles");
@@ -80,8 +68,6 @@ async fn main() {
         .expect("Unable to write book prices");
 
     println!("We have written the output to a file. We are done scraping!");
-
-
 }
 
 /// Writes text data extracted from an HTML document to a file.
