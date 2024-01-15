@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use reqwest::Client; // make an HTTP connection to the host website
 use scraper::{Html, Selector}; // parse the HTML content
-use std::fs::{File};
-use std::io::{self, Write, BufWriter, BufRead};
+use std::fs::{self, File};
+use std::io::{self, Write, BufWriter, stdout, BufReader, Read, BufRead};
 
 //noinspection RsMainFunctionNotFound
 /// This is the main function of the program.
@@ -23,7 +23,7 @@ async fn main() {
 
     let client = Client::new(); // create a new HTTP client
 
-    let res = client.get("https://books.toscrape.com/") // make a GET request to the URL
+    let res = client.get("http://books.toscrape.com/") // make a GET request to the URL
         .send()
         .await // use .await here to wait for the Future to complete
         .unwrap(); // unwrap is like a try-catch
@@ -37,7 +37,7 @@ async fn main() {
     let mut html_tags = HashSet::new();
     let mut tag_class_map = HashMap::new();
 
-    for element in document.select(&Selector::parse("*").unwrap()) {
+    for element in document.select(&scraper::Selector::parse("*").unwrap()) {
         process_elements(&element, &mut html_tags, &mut tag_class_map);
     }
 
@@ -154,7 +154,7 @@ fn scrape_and_write_to_file(document: &Html, selector: &Selector, file: &mut Buf
     Ok(())
 }
 
-fn create_file(file_name: &str) -> io::Result<BufWriter<File>> {
+fn create_file(file_name: &str) -> std::io::Result<BufWriter<File>> {
     let file = File::create(file_name)?;
     let file = BufWriter::new(file);
 
