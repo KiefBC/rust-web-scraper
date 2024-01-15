@@ -1,28 +1,15 @@
 use std::collections::{HashMap, HashSet};
 use reqwest::Client; // make an HTTP connection to the host website
 use scraper::{Html, Selector}; // parse the HTML content
-use std::fs::{self, File};
-use std::io::{self, Write, BufWriter, stdout, BufReader, Read, BufRead};
+use std::fs::{File};
+use std::io::{self, Write, BufWriter, BufRead};
 
-/// This is the main function of the program.
-///
-/// It is an asynchronous function that uses the Tokio runtime.
-/// It makes an HTTP request to the website, parses the HTML content,
-/// and writes the extracted data to a file.
-///
-/// # Arguments
-///
-/// * `None`
-///
-/// # Returns
-///
-/// * `None`
 #[tokio::main] // This attribute sets up the Tokio runtime for your async main function
 async fn main() {
 
     let client = Client::new(); // create a new HTTP client
 
-    let res = client.get("http://books.toscrape.com/") // make a GET request to the URL
+    let res = client.get("https://books.toscrape.com/") // make a GET request to the URL
         .send()
         .await // use .await here to wait for the Future to complete
         .unwrap(); // unwrap is like a try-catch
@@ -44,22 +31,13 @@ async fn main() {
 
     let testing = Selector::parse(&user_selector_choice).unwrap();
 
-    // println!("We have parsed the HTML. Now we are selecting the elements...");
-    // let book_title_selector = Selector::parse(&user_selector).unwrap();
-    // let book_price_selector = Selector::parse(&user_element).unwrap();
-
     println!("What do you want to name the output file?");
     let user_file_name = format!("{}.txt", "output");
     let mut file = create_file(&user_file_name).expect("Failed to create file");
 
-    // scrape_and_write_to_file(&document, &book_title_selector, &mut file)
-    //     .expect("Unable to write book titles");
-
     scrape_and_write_to_file(&document, &testing, &mut file)
         .expect("Unable to write book titles");
-    // scrape_and_write_to_file(&document, &book_price_selector, &mut file)
-    //     .expect("Unable to write book prices");
-    //
+
     println!("We have written the output to a file. We are done scraping!");
 }
 
@@ -154,6 +132,7 @@ fn scrape_and_write_to_file(document: &Html, selector: &Selector, file: &mut Buf
 }
 
 fn create_file(file_name: &str) -> std::io::Result<BufWriter<File>> {
+
     let file = File::create(file_name)?;
     let file = BufWriter::new(file);
 
