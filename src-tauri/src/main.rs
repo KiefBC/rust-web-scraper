@@ -1,25 +1,25 @@
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use std::collections::{HashMap, HashSet};
 use reqwest::Client; // make an HTTP connection to the host website
 use scraper::{Html, Selector}; // parse the HTML content
 use std::fs::{File};
 use std::io::{self, Write, BufWriter, BufRead};
 
-//noinspection RsMainFunctionNotFound
-/// This is the main function of the program.
-///
-/// It is an asynchronous function that uses the Tokio runtime.
-/// It makes an HTTP request to the website, parses the HTML content,
-/// and writes the extracted data to a file.
-///
-/// # Arguments
-///
-/// * `None`
-///
-/// # Returns
-///
-/// * `None`
+// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
+#[tauri::command]
+fn greet(name: &str) -> String {
+    format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
 #[tokio::main] // This attribute sets up the Tokio runtime for your async main function
 async fn main() {
+
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![greet])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 
     let client = Client::new(); // create a new HTTP client
 
@@ -63,7 +63,6 @@ async fn main() {
     //
     println!("We have written the output to a file. We are done scraping!");
 }
-
 fn process_elements(element: &scraper::element_ref::ElementRef, html_tags: &mut HashSet<String>, tag_class_map: &mut HashMap<String, Vec<String>>) {
     // Extracting HTML tag names
     let tag_name = element.value().name().to_string();
@@ -140,7 +139,6 @@ You can use this information to help you decide what you want to scrape.
 
     user_selector_choice
 }
-
 fn scrape_and_write_to_file(document: &Html, selector: &Selector, file: &mut BufWriter<File>) -> io::Result<()> {
 
     for element in document.select(selector) {
@@ -153,7 +151,6 @@ fn scrape_and_write_to_file(document: &Html, selector: &Selector, file: &mut Buf
     }
     Ok(())
 }
-
 fn create_file(file_name: &str) -> io::Result<BufWriter<File>> {
     let file = File::create(file_name)?;
     let file = BufWriter::new(file);
@@ -162,7 +159,6 @@ fn create_file(file_name: &str) -> io::Result<BufWriter<File>> {
 
     Ok(file)
 }
-
 fn clean_content(content: &str) -> String {
 
     // Process the element_text to remove empty lines
