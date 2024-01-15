@@ -1,4 +1,7 @@
 target/
 .idea/
+.vscode/
+node_modules/
 *.txt
+*.log
 **/*.rs.bk
