@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use reqwest::Client; // make an HTTP connection to the host website
 use scraper::{Html, Selector}; // parse the HTML content
 use std::fs::{self, File};
@@ -43,24 +43,15 @@ async fn main() {
     let mut css_classes = HashSet::new();
     let mut css_ids = HashSet::new();
     let mut html_tags = HashSet::new();
+    let mut tag_class_map = HashMap::new();
 
-    for element in document.select(&wildcard_selector) {
-        // Extracting CSS class attributes
-        if let Some(class_attr) = element.value().attr("class") {
-            for class in class_attr.split_whitespace() {
-                css_classes.insert(class.to_string());
-            }
-        }
-
-        // Extracting CSS ID attributes
-        if let Some(id_attr) = element.value().attr("id") {
-            css_ids.insert(id_attr.to_string());
-        }
-
-        // Extracting HTML tag names
-        let tag_name = element.value().name();
-        html_tags.insert(tag_name.to_string());
+    for element in document.select(&scraper::Selector::parse("*").unwrap()) {
+        process_elements(&element, &mut html_tags, &mut tag_class_map);
     }
+
+    // let tag_class_map: HashMap<String, Vec<String>> = tag_class_map.into_iter()
+    //     .map(|(tag, class_set)| (tag, class_set.into_iter().collect()))
+    //     .collect();
 
     // All the CSS Class Selectors
     let mut class_list: Vec<_> = css_classes.into_iter().collect();
@@ -69,8 +60,8 @@ async fn main() {
     class_list.sort();
     id_list.sort();
 
-    let user_selector_choice = id_or_class(class_list, id_list, tag_list);
-    println!("{}", user_selector_choice);
+    let user_selector_choice = id_or_class(class_list, id_list, tag_list, tag_class_map);
+    println!("DEBUG: user_selector_choice == {}", user_selector_choice);
 
     let testing = Selector::parse(&user_selector_choice).unwrap();
 
@@ -99,12 +90,40 @@ async fn main() {
     //     .expect("Unable to write book prices");
     //
     println!("We have written the output to a file. We are done scraping!");
-    // clean_file(&user_file_name).expect("TODO: panic message");
-    // clean_file(&user_file_name).expect("TODO: panic message");
-    // clean_file(&user_file_name)
 }
 
-fn id_or_class(class_list: Vec<String>, id_list: Vec<String>, tag_list: Vec<String>) -> String {
+fn process_elements(element: &scraper::element_ref::ElementRef, html_tags: &mut HashSet<String>, tag_class_map: &mut HashMap<String, Vec<String>>) {
+    // Extracting HTML tag names
+    let tag_name = element.value().name().to_string();
+    html_tags.insert(tag_name.clone());
+
+    // Use a HashSet to prevent duplicate classes
+    let mut class_set = HashSet::new();
+
+    // Include classes of the element itself
+    if let Some(class_list) = element.value().attr("class") {
+        for class in class_list.split_whitespace() {
+            class_set.insert(class.to_string());
+        }
+    }
+
+    // Include classes of the element's children
+    for node in element.children() {
+        if let Some(child) = node.value().as_element() {
+            if let Some(class_list) = child.attr("class") {
+                for class in class_list.split_whitespace() {
+                    class_set.insert(class.to_string());
+                }
+            }
+        }
+    }
+
+    // Convert the HashSet to a Vec and insert it into tag_class_map
+    let child_classes = class_set.into_iter().collect::<Vec<String>>();
+    tag_class_map.insert(tag_name, child_classes);
+}
+
+fn id_or_class(class_list: Vec<String>, id_list: Vec<String>, tag_list: Vec<String>, tag_class_map: HashMap<String, Vec<String>>) -> String {
 
     let mut user_class_id_choice = String::new();
 
@@ -121,24 +140,94 @@ fn id_or_class(class_list: Vec<String>, id_list: Vec<String>, tag_list: Vec<Stri
     // Process user input
     match class_or_id.as_str() {
 
-        // "classes" => {
-        //     println!("\nCSS Classes found:\n");
-        //     for (index, class) in class_list.iter().enumerate() {
-        //         println!("{} - {}", index, class);
-        //     }
-        // },
+        "classes" => {
+            println!("\nCSS Classes found:\n");
+            for (index, class) in class_list.iter().enumerate() {
+                println!("{} - {}", index, class);
+            }
 
-        // "id" => {
-        //     println!("\nID's found:\n");
-        //     for (index, id) in id_list.iter().enumerate() {
-        //         println!("{} - {}", index, id);
-        //     }
-        // },
+            print!("Enter the class name or its index: ");
+            io::stdout().flush().expect("Failed to flush stdout");
+
+            let mut user_choice = String::new();
+            io::stdin()
+                .read_line(&mut user_choice)
+                .expect("Failed to read line");
+            let user_choice = user_choice.trim();
+
+            // Check if user input is a digit and convert it to usize
+            let class_selection = if user_choice.chars().all(char::is_numeric) {
+                user_choice.parse::<usize>().ok()
+                    .and_then(|index| class_list.get(index))
+                    .map(|class| class.to_string())
+            } else {
+                // Check if it's a valid class name
+                class_list.contains(&user_choice.to_string()).then(|| user_choice.to_string())
+            };
+
+            println!("DEBUG: class_selection == {:?}", class_selection);
+
+            match class_selection {
+                Some(class) => {
+                    println!("You selected: {}", class);
+                    class
+                },
+                None => {
+                    println!("Invalid selection");
+                    "Invalid".to_string()
+                }
+            }
+        },
+
+        "id" => {
+            println!("\nID's found:\n");
+            for (index, id) in id_list.iter().enumerate() {
+                println!("{} - {}", index, id);
+            }
+
+            print!("Enter the ID name or its index: ");
+            io::stdout().flush().expect("Failed to flush stdout");
+
+            let mut user_choice = String::new();
+            io::stdin()
+                .read_line(&mut user_choice)
+                .expect("Failed to read line");
+            let user_choice = user_choice.trim();
+
+            // Check if user input is a digit and convert it to usize
+            let id_selection = if user_choice.chars().all(char::is_numeric) {
+                user_choice.parse::<usize>().ok()
+                    .and_then(|index| id_list.get(index))
+                    .map(|id| id.to_string())
+            } else {
+                // Check if it's a valid ID name
+                id_list.contains(&user_choice.to_string()).then(|| user_choice.to_string())
+            };
+
+            match id_selection {
+                Some(id) => {
+                    println!("You selected: {}", id);
+                    id
+                },
+                None => {
+                    println!("Invalid selection");
+                    "Invalid".to_string()
+                }
+            }
+        },
 
         "tag" => {
+            // println!("\nHTML tag's found:\n");
+            // for (index, tag) in tag_list.iter().enumerate() {
+            //     println!("{} - {}", index, tag)
+            // }
+
             println!("\nHTML tag's found:\n");
-            for (index, tag) in tag_list.iter().enumerate() {
-                println!("{} - {}", index, tag)
+            for (tag, classes) in &tag_class_map {
+                println!("- {}", tag);
+                for class in classes {
+                    println!("    - {:?}", class);
+                }
             }
 
             print!("Enter the tag name or its index: ");
@@ -219,6 +308,7 @@ fn scrape_and_write_to_file(document: &Html, selector: &Selector, file: &mut Buf
 
     for element in document.select(selector) {
         let element_text = element.text().collect::<Vec<_>>().join(" ");
+        println!("DEBUG: element_text == {:?}", element_text);
 
         // Clean the String
         let processed_text = clean_content(&element_text);
@@ -263,7 +353,6 @@ fn get_input() -> String {
 /// On failure, such as encountering an I/O error while writing to the file, it returns
 /// an `io::Error`.
 fn create_file(file_name: &str) -> std::io::Result<BufWriter<File>> {
-
     let file = File::create(file_name)?;
     let file = BufWriter::new(file);
 
