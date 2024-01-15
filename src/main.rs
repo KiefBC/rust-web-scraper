@@ -4,7 +4,6 @@ use scraper::{Html, Selector}; // parse the HTML content
 use std::fs::{self, File};
 use std::io::{self, Write, BufWriter, stdout, BufReader, Read, BufRead};
 
-//noinspection RsMainFunctionNotFound
 /// This is the main function of the program.
 ///
 /// It is an asynchronous function that uses the Tokio runtime.
